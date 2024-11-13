@@ -1,0 +1,183 @@
+﻿@page "/"
+@inject ICompressorProvider compressorProvider
+@inject NavigationManager navigationManager
+
+<PageTitle>Home</PageTitle>
+
+<h4>Compress Same Data with Different Compressor and Calculate SHA256 Hash on Server and Client</h4>
+
+<br />
+
+<div class="alert alert-success">
+    <strong>Deflate</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideDeflate</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideDeflate</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-danger">
+    <strong>GZip</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideGzip</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideGzip</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-warning">
+    <strong>Brotli</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideBrotli</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideBrotli</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-success">
+    <strong>LZ4</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideLZ4</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideLZ4</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-success">
+    <strong>LZMA</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideLZMA</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideLZMA</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-success">
+    <strong>Zstd</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideZstd</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideZstd</td>
+        </tr>
+    </table>
+</div>
+
+<div class="alert alert-success">
+    <strong>Snappy</strong>
+    <table>
+        <tr>
+            <td>Server-Side (MinimalApi)</td>
+            <td>@ServerSideSnappy</td>
+        </tr>
+        <tr>
+            <td>Client-Side (BlazorWebAssmebly)&nbsp;&nbsp;&nbsp;</td>
+            <td>@ClientSideSnappy</td>
+        </tr>
+    </table>
+</div>
+
+@code {
+    string? ClientSideDeflate;
+    string? ServerSideDeflate;
+
+    string? ClientSideGzip;
+    string? ServerSideGzip;
+
+    string? ClientSideBrotli;
+    string? ServerSideBrotli;
+
+    string? ClientSideLZ4;
+    string? ServerSideLZ4;
+
+    string? ClientSideLZMA;
+    string? ServerSideLZMA;
+
+    string? ClientSideZstd;
+    string? ServerSideZstd;
+
+    string? ClientSideSnappy;
+    string? ServerSideSnappy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClientSideDeflate = ClientSideHash("deflate");
+        ServerSideDeflate = await ServerSideHash("deflate");
+
+        ClientSideGzip = ClientSideHash("gzip");
+        ServerSideGzip = await ServerSideHash("gzip");
+
+        ClientSideBrotli = ClientSideHash("brotli");
+        ServerSideBrotli = await ServerSideHash("brotli");
+
+        ClientSideLZ4 = ClientSideHash("lz4");
+        ServerSideLZ4 = await ServerSideHash("lz4");
+
+        ClientSideLZMA = ClientSideHash("lzma");
+        ServerSideLZMA = await ServerSideHash("lzma");
+
+        ClientSideZstd = ClientSideHash("zstd");
+        ServerSideZstd = await ServerSideHash("zstd");
+
+        ClientSideSnappy = ClientSideHash("snappy");
+        ServerSideSnappy = await ServerSideHash("snappy");
+    }
+
+    string ClientSideHash(string compressorName)
+    {
+        try
+        {
+            var bytes = Encoding.UTF8.GetBytes("test data");
+
+            var compressor = compressorProvider.GetCompressor(compressorName);
+            var compressedBytes = compressor.Compress(bytes);
+
+            var isSame = compressor.Decompress(compressedBytes).SequenceEqual(bytes);
+            if (isSame is false)
+                throw new Exception("Decompressed data is not the same as the original data.");
+
+            var hashBytes = SHA256.HashData(compressedBytes);
+            return Convert.ToHexStringLower(hashBytes);
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    async Task<string> ServerSideHash(string compressorName)
+    {
+        var httpClient = new HttpClient() { BaseAddress = new(navigationManager.BaseUri) };
+        var hash = await httpClient.GetStringAsync($"/CompressAndCalculateHash/{compressorName}");
+        return hash;
+    }
+}
